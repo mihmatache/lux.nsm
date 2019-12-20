@@ -5,4 +5,6 @@ Personal project for working with:
   - NSM
   - Go
   
-  Use script inside minikube/install package to quickly deploy minikube
+  
+  Helpfull scripts:
+    - environment/deploy/minikube_deploy.sh -> Deploy minikube setup. Use minikube_deploy.sh -h to see capabilities
