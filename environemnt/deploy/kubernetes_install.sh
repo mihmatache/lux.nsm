@@ -8,27 +8,40 @@
 #     - You will be prompted to pass the password at runtine
 # You will be prompted to enter the sudo password as well
 
-usage="$(basename "$0") Install docker on current system: Ubuntu 18.04
+DEFAULT_KUBERNETES_VERSION="1.17.0-00"
+
+usage="$(basename "$0") Helps deploy a standard minikube setup.
   Arguments:
 
-  -u <luxoft username>: Provide this argument if deploying in a LUXOFT environment.
+  -l <luxoft username>: Provide this argument if deploying in a LUXOFT environment.
                         This represents you Luxoft account username. You will be prompted for your account passowrd!
+
+  -k <string>:          Kubeernetes version to install. If not passed default will be used (default: $DEFAULT_KUBERNETES_VERSION)
   "
 
 
-while getopts 'hu:' option
+while getopts 'hl:k:' option
 do
 case "${option}"
 in
 h) echo "$usage"
    exit
    ;;
-u) LUX_USER=${OPTARG};;
+l) LUX_USER=${OPTARG};;
+k) KUBERNETES_VERSION=${OPTARG};;
 *)echo 'Unknown argument passed as input. Exiting!'
   exit 1
   ;;
 esac
 done
+
+# Storing desired variable values. Check if passed by argument, else pass default
+if [ -z "$KUBERNETES_VERSION" ]; then
+  echo "No <kubectl> version passed. Using default: $DEFAULT_KUBERNETES_VERSION"
+  KUBERNETES_VERSION="$DEFAULT_KUBERNETES_VERSION"
+else
+  echo "Setting <kubectl> version to: $KUBERNETES_VERSION"
+fi
 
 # Checking if LUX_USER has been provided. If it is provided consider this a luxoft network and connect and prepare certificates
 if [ -n "$LUX_USER" ]; then
@@ -60,19 +73,27 @@ sudo apt-get install -y apt-transport-https
 sudo apt-get install -y ca-certificates
 sudo apt-get install -y software-properties-common
 
-# Installing docker
-echo "Installing docker"
-sudo docker version > /dev/null 2>&1
+
+# Check if kubectl is installed
+echo "Installing kubectl $KUBERNETES_VERSION"
+kubectl > /dev/null 2>&1
 if [ $? -eq 0 ]; then
-    echo "Docker already installed"
-else
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
-    sudo apt -y update
-    apt-cache policy docker-ce
-    sudo apt-get -y install docker-ce docker-ce-cli containerd.io
+    echo "Kubectl is installed"
+    exit 0
 fi
 
-sudo systemctl status docker
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add
+sudo apt-add-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+
+sudo apt-get install -y kubeadm="$KUBERNETES_VERSION"
+sudo apt-get install -y kubectl="$KUBERNETES_VERSION"
+sudo apt-get install -y kubelet="$KUBERNETES_VERSION"
+
+echo "Adding nodes to hosts file"
+HOSTS=$(cat .nodes)
+echo "$HOSTS" | sudo tee -a /etc/hosts
 
 
+echo 'Disabling swap'
+sudo swapoff -a
+sudo sed -i '/[/]swap.img/ s/^/#/' /etc/fstab
