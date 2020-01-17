@@ -5,7 +5,7 @@
 IP_ADDR=$(ip -o -f inet addr show | awk '/scope global/ {print $4}'| head -n1)
 
 # Starting server
-sudo kubeadm init --pod-network-cidr="$IP_ADDR"
+sudo kubeadm init --pod-network-cidr=10.2.58.22/24
 
 # Adding .kube to user home
 mkdir -p $HOME/.kube
